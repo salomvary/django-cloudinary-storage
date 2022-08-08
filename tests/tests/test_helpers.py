@@ -83,6 +83,9 @@ def get_postprocess_counter_of_adjustable_file():
     Since Django 1.11, postprocess algorythm has been changed for css files
     is such a way that they are postprocessed twice.
     """
+    if version.get_complete_version() >= (4, 0):
+        # Seems like Django 4 optimized the postprocess handler
+        return 1
     if version.get_complete_version() >= (1, 11):
         return 2
     return 1

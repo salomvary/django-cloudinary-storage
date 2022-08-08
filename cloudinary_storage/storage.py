@@ -6,6 +6,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 import cloudinary
 import cloudinary.api
 import cloudinary.uploader
+import django
 import requests
 from django.conf import settings
 from django.contrib.staticfiles import finders
@@ -273,6 +274,7 @@ class ManifestCloudinaryStorage(FileSystemStorage):
     then you are guaranteed the manifest will be used in all production environment,
     including Heroku and AWS Elastic Beanstalk.
     """
+
     def __init__(self, location=None, base_url=None, *args, **kwargs):
         location = app_settings.STATICFILES_MANIFEST_ROOT if location is None else location
         super(ManifestCloudinaryStorage, self).__init__(location, base_url, *args, **kwargs)
@@ -280,8 +282,11 @@ class ManifestCloudinaryStorage(FileSystemStorage):
 
 class HashCloudinaryMixin(object):
     def __init__(self, *args, **kwargs):
-        self.manifest_storage = ManifestCloudinaryStorage()
-        super(HashCloudinaryMixin, self).__init__(*args, **kwargs)
+        if django.VERSION[0] >= 4:
+            super(HashCloudinaryMixin, self).__init__(*args, manifest_storage=ManifestCloudinaryStorage(), **kwargs)
+        else:
+            self.manifest_storage = ManifestCloudinaryStorage()
+            super(HashCloudinaryMixin, self).__init__(*args, **kwargs)
 
     def hashed_name(self, name, content=None, filename=None):
         parsed_name = urlsplit(unquote(name))

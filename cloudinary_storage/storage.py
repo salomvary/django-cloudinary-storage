@@ -81,12 +81,21 @@ class MediaCloudinaryStorage(Storage):
         return self._get_url(name)
 
     def exists(self, name):
-        url = self._get_url(name)
-        response = requests.head(url)
-        if response.status_code == 404:
+        try:
+            self._resource(name)
+        except cloudinary.exceptions.NotFound:
             return False
-        response.raise_for_status()
+
         return True
+
+    def _resource(self, name):
+        options = {
+            'resource_type': self._get_resource_type(name),
+            # Note: Using this parameter also returns the asset's ETag value for all asset types, including raw.
+            'image_metadata': True
+        }
+        name = self._prepend_prefix(name)
+        return cloudinary.api.resource(name, **options)
 
     def size(self, name):
         url = self._get_url(name)
@@ -218,13 +227,13 @@ class StaticCloudinaryStorage(MediaCloudinaryStorage):
         Checks whether a file with a name and a content is already uploaded to Cloudinary.
         Uses ETAG header and MD5 hash for the content comparison.
         """
-        url = self._get_url(name)
-        response = requests.head(url)
-        if response.status_code == 404:
+        try:
+            resource = self._resource(name)
+            etag = resource['etag']
+            hash = self.file_hash(name, content)
+            return etag.startswith(hash)
+        except cloudinary.exceptions.NotFound:
             return False
-        etag = response.headers['ETAG'].split('"')[1]
-        hash = self.file_hash(name, content)
-        return etag.startswith(hash)
 
     def _save(self, name, content):
         """

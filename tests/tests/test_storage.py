@@ -1,6 +1,7 @@
 import errno
 import os.path
 
+from cloudinary import GeneralError
 from requests.exceptions import HTTPError
 import cloudinary.uploader
 from django.test import SimpleTestCase, override_settings
@@ -44,12 +45,10 @@ class CloudinaryMediaStorageTests(SimpleTestCase):
         self.storage.delete(file_name)
         self.assertFalse(self.storage.exists(file_name))
 
-    @mock.patch('cloudinary_storage.storage.requests.head')
-    def test_exists_raises_http_error(self, head_mock):
-        response = head_mock.return_value
-        response.status_code = 500
-        response.raise_for_status.side_effect = HTTPError
-        with self.assertRaises(HTTPError):
+    @mock.patch('cloudinary_storage.storage.cloudinary.api.resource')
+    def test_exists_raises_http_error(self, resource_mock):
+        resource_mock.side_effect = GeneralError
+        with self.assertRaises(GeneralError):
             self.storage.exists(get_random_name())
 
     def test_delete_returns_true_when_file_existed(self):
